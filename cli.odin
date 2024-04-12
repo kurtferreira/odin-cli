@@ -113,6 +113,13 @@ collect :: proc(cli: ^Cli) -> (missing: int = 0, found: int = 0) {
         arg += 1
     }
 
+    for a in cli.args {
+        if !a.parsed && a.required {
+            missing += 1
+            append(&cli.errors, fmt.aprintf("{}", a.help))
+        }
+    }
+
     return missing, found
 }
 

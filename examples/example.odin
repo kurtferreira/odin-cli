@@ -61,7 +61,8 @@ process_args :: proc () -> Maybe(Converter) {
     // Collect all the arguments from the command line
     missing, found := cli.collect(&ctx)
 
-    if found == 0 {
+
+    if found == 0 && missing == 0 {
         // no args passed (print usage)
         cli.help(&ctx)
         return nil
@@ -118,7 +119,5 @@ main :: proc () {
             convert.input_file, 
             convert.output_file)
 
-    } else {
-        fmt.print("An unknown error occured")
-    }
+    } 
 }
