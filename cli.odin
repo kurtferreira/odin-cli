@@ -51,7 +51,7 @@ declare :: proc (cli: ^Cli, name: string, aliases: []string, description: string
         required = required,
         parsed = false,
         expects = expected,
-        value_str = "",
+        value_str = fmt.aprintf("{}", default),
         value = default,
     } 
 
