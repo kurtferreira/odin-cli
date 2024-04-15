@@ -2,6 +2,7 @@ package examples
 
 import "../../cli"
 
+import "core:strings"
 import "core:fmt"
 import "core:os"
 
@@ -13,6 +14,8 @@ Usage:
     examples -input "myfile.txt" -out "out.txt"
 
 Arguments
+    -encrypt, -e Perform encryption (default)
+    -decrypt, -d Perform decryption 
     -input, -i "filepath" Encrypt this file 
     -out, -o "filepath" Set the output of the encrypted file
 =====================================================
@@ -20,7 +23,8 @@ Arguments
 
 Converter :: struct {
     input_file: string,
-    output_file: string
+    output_file: string,
+    encrypt: bool,
 }
 
 process_args :: proc () -> Maybe(Converter) {
@@ -48,6 +52,26 @@ process_args :: proc () -> Maybe(Converter) {
         expected = .String,
     )
 
+    cli.declare(&ctx,
+        "encrypt",
+        {"-encrypt", "-e"},
+        "Perform encryption (default)",
+        "",
+        required = false,
+        default = true,
+        expected = .Bool,
+    )
+
+    cli.declare(&ctx,
+        "decrypt",
+        {"-decrypt", "-d"},
+        "Perform decryption",
+        "",
+        required = false,
+        default = true,
+        expected = .Bool,
+    )
+
     cli.declare(&ctx, 
         "help",
         {"-help"}, 
@@ -61,8 +85,7 @@ process_args :: proc () -> Maybe(Converter) {
     // Collect all the arguments from the command line
     missing, found := cli.collect(&ctx)
 
-
-    if found == 0 && missing == 0 {
+    if found == 0 {
         // no args passed (print usage)
         cli.help(&ctx)
         return nil
@@ -85,12 +108,40 @@ process_args :: proc () -> Maybe(Converter) {
         return nil
     }
 
+    encrypting := true
+    decrypt, ok := cli.by_name(&ctx, "decrypt", true).?; if ok {
+        if decrypt.value.(bool) == true {
+            encrypting = false
+        }
+    }
+
     convert := Converter {
         input_file = filename.value.(string),
-        output_file = output.value.(string)
+        output_file = output.value.(string),
+        encrypt = encrypting,
     }
 
     return convert
+}
+
+encrypt_string :: proc (input: []u8) -> []u8 {
+    out := input
+
+    for c,i in out {
+        out[i] += 1
+    }
+
+    return out
+}
+
+decrypt_string :: proc (input: []u8) -> []u8 {
+    out := transmute([]u8)input
+
+    for c,i in out {
+        out[i] -= 1
+    }
+
+    return out
 }
 
 main :: proc () { 
@@ -104,18 +155,27 @@ main :: proc () {
         }
         defer delete(data)
 
-        // simple character shit encoding
-        for c,i in data {
-            data[i] = c + 1
-        }
 
-        success := os.write_entire_file(convert.output_file, data[:])
-        if !success {
-            fmt.printfln("Unable to write to file ({})", convert.output_file)
-            return
+        if convert.encrypt {
+            fmt.print("Encrypting...")
+            output := encrypt_string(data[:])
+            success := os.write_entire_file(convert.output_file, output[:])
+            if !success {
+                fmt.printfln("Unable to write to file ({})", convert.output_file)
+                return
+            }
+        } else {
+            fmt.print("Decrypting...")
+            output := decrypt_string(data[:])
+            success := os.write_entire_file(convert.output_file, output[:])
+            if !success {
+                fmt.printfln("Unable to write to file ({})", convert.output_file)
+                return
+            }
         }
+  
         
-        fmt.printfln("File ({}) has been encoded to ({}).", 
+        fmt.printfln("File ({}) has been written to ({}).", 
             convert.input_file, 
             convert.output_file)
 
