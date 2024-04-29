@@ -28,11 +28,11 @@ Converter :: struct {
 }
 
 process_args :: proc () -> Maybe(Converter) {
-    ctx := cli.setup(HELP)
-    defer cli.destroy(&ctx)
+    cli.setup(HELP)
+    defer cli.destroy()
 
     // declare all possible arguments and good defaults
-    cli.declare(&ctx,
+    cli.declare(
         "input",
         {"-input", "-i"},
         "The input file to use for processing", 
@@ -42,7 +42,7 @@ process_args :: proc () -> Maybe(Converter) {
         expected = .String,
     ) 
 
-    cli.declare(&ctx, 
+    cli.declare(
         "output",
         {"-out", "-o"}, 
         "Set the output file to write", 
@@ -52,7 +52,7 @@ process_args :: proc () -> Maybe(Converter) {
         expected = .String,
     )
 
-    cli.declare(&ctx,
+    cli.declare(
         "encrypt",
         {"-encrypt", "-e"},
         "Perform encryption (default)",
@@ -62,7 +62,7 @@ process_args :: proc () -> Maybe(Converter) {
         expected = .Bool,
     )
 
-    cli.declare(&ctx,
+    cli.declare(
         "decrypt",
         {"-decrypt", "-d"},
         "Perform decryption",
@@ -72,7 +72,7 @@ process_args :: proc () -> Maybe(Converter) {
         expected = .Bool,
     )
 
-    cli.declare(&ctx, 
+    cli.declare(
         "help",
         {"-help"}, 
         "Print the help message", 
@@ -83,33 +83,35 @@ process_args :: proc () -> Maybe(Converter) {
     )
 
     // Collect all the arguments from the command line
-    missing, found := cli.collect(&ctx)
+    missing, found := cli.collect()
 
     if found == 0 {
         // no args passed (print usage)
-        cli.help(&ctx)
+        cli.help()
         return nil
     } else if missing > 0 { 
-        cli.print_errors(&ctx)
+        cli.print_errors()
         return nil
     } 
     
+
+
     // only show help if we explicitly asked for it
-    show_help := cli.by_name(&ctx, "help"); if show_help != nil {
-        cli.help(&ctx)
+    show_help := cli.was_declared("help"); if show_help {
+        cli.help()
         return nil
     }
-    
-    filename, ok_in := cli.by_name(&ctx, "input").?; if !ok_in {
+ 
+    filename, ok_in := cli.by_name("input").?; if !ok_in {
         return nil
     }
 
-    output, ok_out := cli.by_name(&ctx, "output", false).?; if !ok_out {
+    output, ok_out := cli.by_name("output", false).?; if !ok_out {
         return nil
     }
 
     encrypting := true
-    decrypt, ok := cli.by_name(&ctx, "decrypt", true).?; if ok {
+    decrypt, ok := cli.by_name("decrypt", true).?; if ok {
         if decrypt.value.(bool) == true {
             encrypting = false
         }

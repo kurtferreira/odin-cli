@@ -29,13 +29,24 @@ Arg :: struct {
     value_str: string
 }
 
+@private
 Cli :: struct {
     args: [dynamic] Arg,
     help: string,
     errors: [dynamic] string
 } 
 
-declare :: proc (cli: ^Cli, name: string, aliases: []string, description: string, help: string, required: bool, default: union {f64, bool, string}, expected: Type) {
+cli := Cli {}
+
+was_declared :: proc (name: string) -> bool {
+    arg, ok := by_name(name).?; if ok {
+        return arg.parsed
+    }
+
+    return false
+}
+
+declare :: proc (name: string, aliases: []string, description: string, help: string, required: bool, default: union {f64, bool, string}, expected: Type) {
     // fixme: why is this failing?
     // #assert(type_of(default) == type_of(expected))
     
@@ -60,7 +71,7 @@ declare :: proc (cli: ^Cli, name: string, aliases: []string, description: string
 
 /// Collect the arguments from the command line
 /// Will print out the missing fields if any
-collect :: proc(cli: ^Cli) -> (missing: int = 0, found: int = 0) {
+collect :: proc() -> (missing: int = 0, found: int = 0) {
     arg := 1
     for i in 1..<len(os.args) {
 
@@ -68,7 +79,7 @@ collect :: proc(cli: ^Cli) -> (missing: int = 0, found: int = 0) {
             break 
         }
 
-        pos := index_alias(cli, os.args[arg]); if pos != -1 {
+        pos := index_alias(os.args[arg]); if pos != -1 {
             cli.args[pos].parsed = true
             found += 1
 
@@ -84,7 +95,7 @@ collect :: proc(cli: ^Cli) -> (missing: int = 0, found: int = 0) {
                     next := os.args[arg]
                     
                     // does the next parameter exist as a arg
-                    exists := index_alias(cli, next); if exists != -1 {
+                    exists := index_alias(next); if exists != -1 {
                         append(&cli.errors, fmt.aprintf("{}", cli.args[pos].help))
 
                         missing += 1 
@@ -123,7 +134,7 @@ collect :: proc(cli: ^Cli) -> (missing: int = 0, found: int = 0) {
     return missing, found
 }
 
-print_errors :: proc(cli: ^Cli) {
+print_errors :: proc() {
     fmt.printfln("{}", strings.concatenate(cli.errors[:]))
 }
 
@@ -135,13 +146,13 @@ setup :: proc (help: string) -> Cli {
     return cli
 }
 /// Free any allocated strings or arguments
-destroy :: proc(cli: ^Cli) { 
+destroy :: proc() { 
     delete(cli.args)
     delete(cli.errors)
 }
 
 @(private)
-index_name :: proc (cli: ^Cli, name: string) -> int {
+index_name :: proc (name: string) -> int {
     for arg, i in cli.args {
         if arg.name == name {
             return i
@@ -152,7 +163,7 @@ index_name :: proc (cli: ^Cli, name: string) -> int {
 }
 
 @(private)
-index_alias :: proc (cli: ^Cli, name: string) -> int {
+index_alias :: proc (name: string) -> int {
     for arg, i in cli.args {
         for alias in arg.aliases {
             if alias == name {
@@ -163,7 +174,7 @@ index_alias :: proc (cli: ^Cli, name: string) -> int {
     return -1
 }
 
-by_name :: proc(cli: ^Cli, name: string, must_parsed: bool = true) -> Maybe(Arg) {
+by_name :: proc(name: string, must_parsed: bool = true) -> Maybe(Arg) {
     for arg in cli.args {
         if arg.name == name {
             return arg if !must_parsed || (must_parsed && arg.parsed) || (!arg.required && !must_parsed) else nil
@@ -173,7 +184,7 @@ by_name :: proc(cli: ^Cli, name: string, must_parsed: bool = true) -> Maybe(Arg)
     return nil
 }
 
-by_alias :: proc (cli: ^Cli, name: string, must_parsed: bool = true) -> Maybe(Arg) {
+by_alias :: proc (name: string, must_parsed: bool = true) -> Maybe(Arg) {
     for arg in cli.args {
         for alias in arg.aliases {
             if alias == name {
@@ -185,6 +196,6 @@ by_alias :: proc (cli: ^Cli, name: string, must_parsed: bool = true) -> Maybe(Ar
     return nil
 }
 
-help :: proc(cli: ^Cli) {
+help :: proc() {
     fmt.printfln("{}", cli.help)
 }
