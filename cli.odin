@@ -1,3 +1,4 @@
+// A simple library to make working with CLI arguments easier
 package cli 
 
 import "core:testing"
@@ -18,8 +19,8 @@ Arg :: struct {
     aliases: []string,
     description: string,
     help: string,
-    required: bool,
-    parsed: bool, // was this parsed from the CLI or did we provide a default
+    required: bool, 
+    parsed_from_cli: bool, 
     expects: Type,
     value: union {
         f64, 
@@ -29,18 +30,19 @@ Arg :: struct {
     value_str: string
 }
 
-@private
+@(private)
 Cli :: struct {
     args: [dynamic] Arg,
     help: string,
     errors: [dynamic] string
 } 
 
+@(private)
 cli := Cli {}
 
 was_declared :: proc (name: string) -> bool {
     arg, ok := by_name(name).?; if ok {
-        return arg.parsed
+        return arg.parsed_from_cli
     }
 
     return false
@@ -60,7 +62,7 @@ declare :: proc (name: string, aliases: []string, description: string, help: str
         description = description,
         help = help,
         required = required,
-        parsed = false,
+        parsed_from_cli = false,
         expects = expected,
         value_str = fmt.aprintf("{}", default),
         value = default,
@@ -80,7 +82,7 @@ collect :: proc() -> (missing: int = 0, found: int = 0) {
         }
 
         pos := index_alias(os.args[arg]); if pos != -1 {
-            cli.args[pos].parsed = true
+            cli.args[pos].parsed_from_cli = true
             found += 1
 
             if cli.args[pos].expects != nil {
@@ -125,7 +127,7 @@ collect :: proc() -> (missing: int = 0, found: int = 0) {
     }
 
     for a in cli.args {
-        if !a.parsed && a.required {
+        if !a.parsed_from_cli && a.required {
             missing += 1
             append(&cli.errors, fmt.aprintf("{}", a.help))
         }
@@ -138,12 +140,9 @@ print_errors :: proc() {
     fmt.printfln("{}", strings.concatenate(cli.errors[:]))
 }
 
-setup :: proc (help: string) -> Cli {
-    cli: Cli
+setup :: proc (help: string) {
     cli.help = help
     cli.args = {}
-
-    return cli
 }
 /// Free any allocated strings or arguments
 destroy :: proc() { 
@@ -177,7 +176,7 @@ index_alias :: proc (name: string) -> int {
 by_name :: proc(name: string, must_parsed: bool = true) -> Maybe(Arg) {
     for arg in cli.args {
         if arg.name == name {
-            return arg if !must_parsed || (must_parsed && arg.parsed) || (!arg.required && !must_parsed) else nil
+            return arg if !must_parsed || (must_parsed && arg.parsed_from_cli) || (!arg.required && !must_parsed) else nil
         }
     }
 
@@ -188,7 +187,7 @@ by_alias :: proc (name: string, must_parsed: bool = true) -> Maybe(Arg) {
     for arg in cli.args {
         for alias in arg.aliases {
             if alias == name {
-                return arg if !must_parsed || (must_parsed && arg.parsed) || (!arg.required && !must_parsed) else nil
+                return arg if !must_parsed || (must_parsed && arg.parsed_from_cli) || (!arg.required && !must_parsed) else nil
             }
         } 
     }

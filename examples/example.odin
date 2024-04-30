@@ -28,13 +28,15 @@ Converter :: struct {
 }
 
 process_args :: proc () -> Maybe(Converter) {
+
     cli.setup(HELP)
+
+    
     defer cli.destroy()
 
     // declare all possible arguments and good defaults
     cli.declare(
-        "input",
-        {"-input", "-i"},
+        "input", {"-input", "-i"},
         "The input file to use for processing", 
         "Please provide a file to convert",
         required = true,
@@ -43,8 +45,7 @@ process_args :: proc () -> Maybe(Converter) {
     ) 
 
     cli.declare(
-        "output",
-        {"-out", "-o"}, 
+        "output", {"-out", "-o"}, 
         "Set the output file to write", 
         "", 
         required = false, 
@@ -53,8 +54,7 @@ process_args :: proc () -> Maybe(Converter) {
     )
 
     cli.declare(
-        "encrypt",
-        {"-encrypt", "-e"},
+        "encrypt", {"-encrypt", "-e"},
         "Perform encryption (default)",
         "",
         required = false,
@@ -63,8 +63,7 @@ process_args :: proc () -> Maybe(Converter) {
     )
 
     cli.declare(
-        "decrypt",
-        {"-decrypt", "-d"},
+        "decrypt", {"-decrypt", "-d"},
         "Perform decryption",
         "",
         required = false,
@@ -73,8 +72,7 @@ process_args :: proc () -> Maybe(Converter) {
     )
 
     cli.declare(
-        "help",
-        {"-help"}, 
+        "help", {"-help"}, 
         "Print the help message", 
         "", 
         required = false, 
@@ -90,36 +88,40 @@ process_args :: proc () -> Maybe(Converter) {
         cli.help()
         return nil
     } else if missing > 0 { 
+        // we have missing required parameters
         cli.print_errors()
         return nil
     } 
-    
-
+     
 
     // only show help if we explicitly asked for it
-    show_help := cli.was_declared("help"); if show_help {
+    show_help := cli.was_declared("help")
+    if show_help {
         cli.help()
         return nil
     }
  
-    filename, ok_in := cli.by_name("input").?; if !ok_in {
+    filename := cli.by_name("input")
+    if filename == nil {
         return nil
     }
 
-    output, ok_out := cli.by_name("output", false).?; if !ok_out {
+    output := cli.by_name("output", false)
+    if output == nil {
         return nil
     }
 
     encrypting := true
-    decrypt, ok := cli.by_name("decrypt", true).?; if ok {
-        if decrypt.value.(bool) == true {
+    decrypt := cli.by_name("decrypt", true)
+    if decrypt != nil {
+        if decrypt.?.value.(bool) == true {
             encrypting = false
         }
     }
 
     convert := Converter {
-        input_file = filename.value.(string),
-        output_file = output.value.(string),
+        input_file = filename.?.value.(string),
+        output_file = output.?.value.(string),
         encrypt = encrypting,
     }
 
