@@ -40,6 +40,30 @@ Cli :: struct {
 @(private)
 cli := Cli {}
 
+@(private)
+index_name :: proc (name: string) -> int {
+    for arg, i in cli.args {
+        if arg.name == name {
+            return i
+        }
+    }
+
+    return -1
+}
+
+@(private)
+index_alias :: proc (name: string) -> int {
+    for arg, i in cli.args {
+        for alias in arg.aliases {
+            if alias == name {
+                return i
+            }
+        } 
+    }
+    return -1
+}
+
+// Was an argument declared via the CLI
 was_declared :: proc (name: string) -> bool {
     arg, ok := by_name(name).?; if ok {
         return arg.parsed_from_cli
@@ -48,6 +72,7 @@ was_declared :: proc (name: string) -> bool {
     return false
 }
 
+// Declare a new anticipated argument
 declare :: proc (name: string, aliases: []string, description: string, help: string, required: bool, default: union {f64, bool, string}, expected: Type) {
     // fixme: why is this failing?
     // #assert(type_of(default) == type_of(expected))
@@ -71,8 +96,8 @@ declare :: proc (name: string, aliases: []string, description: string, help: str
     append(&cli.args, arg)
 }
 
-/// Collect the arguments from the command line
-/// Will print out the missing fields if any
+// Collect the arguments from the command line
+// Will print out the missing fields if any
 collect :: proc() -> (missing: int = 0, found: int = 0) {
     arg := 1
     for i in 1..<len(os.args) {
@@ -136,43 +161,24 @@ collect :: proc() -> (missing: int = 0, found: int = 0) {
     return missing, found
 }
 
+// Print any missing arguments
 print_errors :: proc() {
     fmt.printfln("{}", strings.concatenate(cli.errors[:]))
 }
 
+// Setup the CLI context with a custom user help message
 setup :: proc (help: string) {
     cli.help = help
     cli.args = {}
 }
-/// Free any allocated strings or arguments
+
+// Free any allocated resources
 destroy :: proc() { 
     delete(cli.args)
     delete(cli.errors)
 }
 
-@(private)
-index_name :: proc (name: string) -> int {
-    for arg, i in cli.args {
-        if arg.name == name {
-            return i
-        }
-    }
-
-    return -1
-}
-
-@(private)
-index_alias :: proc (name: string) -> int {
-    for arg, i in cli.args {
-        for alias in arg.aliases {
-            if alias == name {
-                return i
-            }
-        } 
-    }
-    return -1
-}
-
+// Retrieve an argument by its name
 by_name :: proc(name: string, must_parsed: bool = true) -> Maybe(Arg) {
     for arg in cli.args {
         if arg.name == name {
@@ -183,6 +189,7 @@ by_name :: proc(name: string, must_parsed: bool = true) -> Maybe(Arg) {
     return nil
 }
 
+// Retrieve an argument by its alias (e.g. -f or -file)
 by_alias :: proc (name: string, must_parsed: bool = true) -> Maybe(Arg) {
     for arg in cli.args {
         for alias in arg.aliases {
@@ -195,6 +202,7 @@ by_alias :: proc (name: string, must_parsed: bool = true) -> Maybe(Arg) {
     return nil
 }
 
+// Print the user's help message
 help :: proc() {
     fmt.printfln("{}", cli.help)
 }
